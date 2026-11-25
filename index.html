@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revival PlayStation - Sistem Rekap Penyewaan &amp; Cashflow</title>
+    <link rel="icon" type="image/jpeg" href="assets/logo.jpeg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+    <!-- 1. HALAMAN LOGIN -->
+    <section id="loginView" class="login-wrapper">
+        <div class="login-card">
+            <img src="assets/logo.jpeg" alt="Logo Revival PlayStation" class="login-logo">
+            <h1>REVIVAL PLAYSTATION</h1>
+            <p class="subtitle">Sistem Manajemen Rekap Penyewaan &amp; Cashflow</p>
+
+            <div id="loginError" class="alert-box alert-error hidden"></div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="loginUsername">Username</label>
+                    <input type="text" id="loginUsername" class="form-control" placeholder="Masukkan username" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" class="form-control" placeholder="Masukkan password" required>
+                </div>
+                <button type="submit" id="btnLogin" class="btn btn-primary" style="width:100%; padding:12px; margin-top:8px;">
+                    Masuk
+                </button>
+            </form>
+            <p class="text-muted" style="font-size:0.78rem; margin-top:16px;">
+                Sesi otomatis logout saat tab/browser ditutup demi keamanan data.
+            </p>
+        </div>
+    </section>
+
+    <!-- NAVBAR UTAMA -->
+    <header id="appNavbar" class="navbar hidden">
+        <div class="nav-brand" style="cursor:pointer;" onclick="showPortalView()">
+            <img src="assets/logo.jpeg" alt="Logo Revival PS">
+            <div class="nav-brand-text">
+                <h2>REVIVAL PLAYSTATION</h2>
+                <span>Sistem Operasional &amp; Keuangan</span>
+            </div>
+        </div>
+        <div class="nav-user">
+            <div class="user-badge" id="dbModeBadge" title="Status penyimpanan data">
+                <span>💾</span>
+                <span id="dbModeText">Mode Lokal</span>
+            </div>
+            <div class="user-badge">
+                <span>👤</span>
+                <span id="navUserName">Revival PlayStation</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="showPortalView()">Menu Utama</button>
+            <button class="btn btn-danger btn-sm" onclick="handleLogout()">Logout</button>
+        </div>
+    </header>
+
+    <!-- 2. HALAMAN PILIHAN 2 OPSI SETELAH LOGIN -->
+    <main id="portalView" class="container hidden">
+        <div class="portal-header">
+            <h1 id="portalGreeting">Selamat bertugas!</h1>
+            <p class="text-muted">Silakan pilih menu pencatatan operasional Revival PlayStation di bawah ini:</p>
+        </div>
+
+        <div class="portal-grid">
+            <div class="portal-card" onclick="openRentalModule()">
+                <div class="portal-icon">🎮</div>
+                <h3>1. Rekap Penyewaan PS</h3>
+                <p>
+                    Form data penyewaan &amp; pengembalian konsol (PS3 / PS4 / PS5 / + TV), data identitas &amp; foto KTP/SIM, paket sewa, status pembayaran, serta ekspor laporan.
+                </p>
+                <button class="btn btn-accent" style="width:100%;">Buka Rekap Penyewaan &rarr;</button>
+            </div>
+
+            <div class="portal-card cashflow-card" onclick="openCashflowModule()">
+                <div class="portal-icon">💰</div>
+                <h3>2. Rekap Perhari / Cashflow</h3>
+                <p>
+                    Pembukuan arus kas harian (Pemasukan Billing, F&amp;B, Pengeluaran Operasional, Saldo Akhir) lengkap dengan fitur unduh laporan.
+                </p>
+                <button class="btn btn-success" style="width:100%;">Buka Rekap Cashflow &rarr;</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- 3. MODUL OPSI 1: REKAP PENYEWAAN PLAYSTATION (DESAIN MANAGEMENT FIX + KONTEN BARU) -->
+    <main id="rentalView" class="container hidden">
+        <div class="workspace-header">
+            <div class="workspace-title">
+                <button class="btn btn-outline btn-sm" onclick="showPortalView()">&larr; Kembali</button>
+                <div>
+                    <h2 style="color:var(--primary);">Rekap Penyewaan PlayStation</h2>
+                    <small class="text-muted">Form Data Penyewaan &amp; Pengembalian Unit Konsol</small>
+                </div>
+            </div>
+            <div class="export-bar">
+                <button class="btn btn-outline btn-sm" onclick="exportToPNG('rentalExportArea', 'Rekap_Penyewaan_RevivalPS')">🖼️ Download PNG</button>
+                <button class="btn btn-accent btn-sm" onclick="triggerExportRentalWord()">📄 Download Word</button>
+                <button class="btn btn-success btn-sm" onclick="exportToExcel('rentalTable', 'Rekap Penyewaan', 'Rekap_Penyewaan_RevivalPS')">📊 Download Excel</button>
+                <button class="btn btn-outline btn-sm" onclick="triggerExportRentalCSV()">📑 CSV</button>
+                <button class="btn btn-primary btn-sm" onclick="backupAllDataJSON()">💾 Cadangkan</button>
+                <button class="btn btn-outline btn-sm" onclick="document.getElementById('restoreJsonInput').click()">📂 Pulihkan</button>
+                <input type="file" id="restoreJsonInput" accept=".json" class="hidden" onchange="restoreAllDataJSON(event)">
+            </div>
+        </div>
+
+        <!-- Banner Privasi Data -->
+        <div class="alert-box alert-privacy">
+            <strong>Privasi data:</strong> data dan foto disimpan di browser perangkat ini (atau tersinkron ke Supabase jika dikonfigurasi). Jangan gunakan di perangkat umum. Foto KTP adalah data sensitif—minta izin pelanggan, batasi akses, dan hapus jika sudah tidak diperlukan.
+        </div>
+
+        <!-- 4 Kartu Statistik -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Data</div>
+                <div class="stat-value" id="statRentalCount">0</div>
+            </div>
+            <div class="stat-card balance">
+                <div class="stat-label">Masih Disewa</div>
+                <div class="stat-value" id="statRentalActive">0</div>
+            </div>
+            <div class="stat-card income">
+                <div class="stat-label">Total Harga Tercatat</div>
+                <div class="stat-value" id="statRentalTotal">Rp 0</div>
+            </div>
+            <div class="stat-card expense">
+                <div class="stat-label">DP / Belum Dibayar</div>
+                <div class="stat-value" id="statRentalPending">Rp 0</div>
+            </div>
+        </div>
+
+        <!-- Panel Form Tambah / Edit Data Penyewaan (Konten Baru) -->
+        <div class="card-panel" id="rentalFormCard">
+            <div class="card-panel-header">
+                <h3 id="rentalFormTitle">Tambah Data Penyewaan</h3>
+                <span id="rentalEditBadge" class="badge badge-dp hidden">Mode Edit Data</span>
+            </div>
+            <form id="rentalForm" onsubmit="saveRental(event)">
+                <input type="hidden" id="rentalEditId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="rentalNama">Nama pelanggan *</label>
+                        <input type="text" id="rentalNama" class="form-control" placeholder="Nama lengkap pelanggan" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="rentalWhatsapp">Nomor WhatsApp *</label>
+                        <input type="tel" id="rentalWhatsapp" class="form-control" placeholder="08xxxxxxxxxx" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="rentalJenisId">Jenis identitas</label>
+                        <select id="rentalJenisId" class="form-control">
+                            <option value="KTP">KTP</option>
+                            <option value="SIM">SIM</option>
+                            <option value="Kartu pelajar">Kartu pelajar</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="rentalNomorId">Nomor identitas (opsional)</label>
+                        <input type="text" id="rentalNomorId" class="form-control" placeholder="NIK / Nomor kartu identitas">
+                    </div>
+                    <div class="form-group">
+                        <label for="rentalUnit">Unit</label>
+                        <select id="rentalUnit" class="form-control" required>
+                            <option value="PS3">PS3</option>
+                            <option value="PS4">PS4</option>
+                            <option value="PS5">PS5</option>
+                            <option value="PS3 + TV">PS3 + TV</option>
+                            <option value="PS4 + TV">PS4 + TV</option>
+                            <option value="PS5 + TV">PS5 + TV</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="rentalPaket">Paket sewa</label>
+                        <select id="rentalPaket" class="form-control" required>
+                            <option value="Per jam">Per jam</option>
+                            <option value="6 jam">6 jam</option>
+                            <option value="12 jam">12 jam</option>
+                            <option value="24 jam">24 jam</option>
+                            <option value="Lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="rentalWaktuMulai">Waktu mulai *</label>
+                        <input type="datetime-local" id="rentalWaktuMulai" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="rentalRencanaKembali">Rencana kembali</label>
+                        <input type="datetime-local" id="rentalRencanaKembali" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="rentalHarga">Harga (Rp) *</label>
+                        <input type="number" id="rentalHarga" class="form-control" min="0" placeholder="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="rentalPembayaran">Pembayaran</label>
+                        <select id="rentalPembayaran" class="form-control" required>
+                            <option value="Belum dibayar">Belum dibayar</option>
+                            <option value="DP">DP</option>
+                            <option value="Lunas">Lunas</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="rentalStatusSewa">Status sewa</label>
+                        <select id="rentalStatusSewa" class="form-control" required>
+                            <option value="Disewa">Disewa</option>
+                            <option value="Selesai">Selesai</option>
+                            <option value="Batal">Batal</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="rentalFotoId">Foto identitas (opsional)</label>
+                        <input type="file" id="rentalFotoId" class="form-control" accept="image/*">
+                        <small class="text-muted" style="display:block; margin-top:4px; font-size:0.76rem;">
+                            Pilih foto dari galeri atau kamera. Foto akan diperkecil sebelum disimpan.
+                        </small>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top:4px;">
+                    <label for="rentalCatatan">Catatan kondisi / aksesori</label>
+                    <textarea id="rentalCatatan" class="form-control" rows="2" placeholder="Contoh: 2 stik, kabel HDMI, kondisi awal..."></textarea>
+                </div>
+
+                <div class="checkbox-stack">
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="rentalHapusFoto">
+                        <span>Hapus foto yang tersimpan saat mengedit</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="rentalIzinPelanggan">
+                        <span>Pelanggan memberi izin foto identitas dicatat untuk keperluan penyewaan (jika foto diunggah).</span>
+                    </label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="rentalSyncCashflow" checked>
+                        <span>Otomatis catat ke Rekap Perhari / Cashflow jika pembayaran DP atau Lunas</span>
+                    </label>
+                </div>
+
+                <div class="form-actions" style="justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                    <small class="text-muted">* Wajib diisi. Jangan simpan nomor identitas jika tidak diperlukan.</small>
+                    <div style="display:flex; gap:10px;">
+                        <button type="button" id="btnCancelRental" class="btn btn-outline" onclick="resetRentalForm()">Kosongkan Form</button>
+                        <button type="submit" id="btnSaveRental" class="btn btn-primary">Simpan Data</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Panel Filter & Tabel Daftar Penyewaan -->
+        <div class="card-panel">
+            <div class="filter-bar">
+                <input type="text" id="filterRentalSearch" class="form-control" placeholder="Cari nama / WhatsApp / unit..." oninput="renderRentalTable()">
+                <select id="filterRentalStatusSewa" class="form-control" onchange="renderRentalTable()">
+                    <option value="">Semua status sewa</option>
+                    <option value="Disewa">Disewa</option>
+                    <option value="Selesai">Selesai</option>
+                    <option value="Batal">Batal</option>
+                </select>
+                <select id="filterRentalPembayaran" class="form-control" onchange="renderRentalTable()">
+                    <option value="">Semua pembayaran</option>
+                    <option value="Belum dibayar">Belum dibayar</option>
+                    <option value="DP">DP</option>
+                    <option value="Lunas">Lunas</option>
+                </select>
+                <button class="btn btn-outline btn-sm" onclick="document.getElementById('filterRentalSearch').value=''; document.getElementById('filterRentalStatusSewa').value=''; document.getElementById('filterRentalPembayaran').value=''; renderRentalTable();">Reset Filter</button>
+            </div>
+
+            <div id="rentalExportArea" class="table-responsive">
+                <div class="export-header-banner">
+                    <img src="assets/logo.jpeg" alt="Logo">
+                    <div>
+                        <h3 style="margin:0; font-size:1.1rem;">REVIVAL PLAYSTATION — DATA PENYEWAAN &amp; PENGEMBALIAN</h3>
+                        <small style="color:#cbd5e1;">Laporan Transaksi Penyewaan Unit Konsol &amp; Status Pengembalian</small>
+                    </div>
+                </div>
+                <table id="rentalTable">
+                    <thead>
+                        <tr>
+                            <th class="text-center">No</th>
+                            <th>Pelanggan &amp; WhatsApp</th>
+                            <th>Identitas</th>
+                            <th>Unit &amp; Paket</th>
+                            <th>Waktu Mulai &amp; Kembali</th>
+                            <th class="text-right">Harga</th>
+                            <th class="text-center">Pembayaran</th>
+                            <th class="text-center">Status Sewa</th>
+                            <th class="text-center no-export">Foto</th>
+                            <th>Catatan</th>
+                            <th class="no-export text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rentalTableBody"></tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="5" class="text-right">TOTAL HARGA TERCATAT (AKTIF/SELESAI):</td>
+                            <td class="text-right" id="footerRentalTotal">Rp 0</td>
+                            <td colspan="5"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- 4. MODUL OPSI 2: REKAP PERHARI / CASHFLOW HARIAN -->
+    <main id="cashflowView" class="container hidden">
+        <div class="workspace-header">
+            <div class="workspace-title">
+                <button class="btn btn-outline btn-sm" onclick="showPortalView()">&larr; Kembali</button>
+                <div>
+                    <h2 style="color:var(--primary);">Rekap Perhari / Cashflow Harian</h2>
+                    <small class="text-muted">Pencatatan arus kas masuk &amp; keluar harian Revival PlayStation</small>
+                </div>
+            </div>
+            <div class="export-bar">
+                <button class="btn btn-outline btn-sm" onclick="exportToPNG('cashflowExportArea', 'Rekap_Cashflow_RevivalPS')">🖼️ Download PNG</button>
+                <button class="btn btn-accent btn-sm" onclick="triggerExportCashflowWord()">📄 Download Word</button>
+                <button class="btn btn-success btn-sm" onclick="exportToExcel('cashflowTable', 'Cashflow Harian', 'Rekap_Cashflow_RevivalPS')">📊 Download Excel</button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card income">
+                <div class="stat-label">Total Pemasukan (Debit)</div>
+                <div class="stat-value" id="statCfMasuk">Rp 0</div>
+            </div>
+            <div class="stat-card expense">
+                <div class="stat-label">Total Pengeluaran (Kredit)</div>
+                <div class="stat-value" id="statCfKeluar">Rp 0</div>
+            </div>
+            <div class="stat-card balance">
+                <div class="stat-label">Saldo Bersih / Kas Akhir</div>
+                <div class="stat-value" id="statCfSaldo">Rp 0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Jumlah Transaksi Kas</div>
+                <div class="stat-value" id="statCfCount">0 Entri Kas</div>
+            </div>
+        </div>
+
+        <div class="card-panel">
+            <div class="card-panel-header">
+                <h3 id="cfFormTitle">Input Cashflow / Arus Kas Harian</h3>
+            </div>
+            <form id="cashflowForm" onsubmit="saveCashflow(event)">
+                <input type="hidden" id="cfEditId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Tanggal</label>
+                        <input type="date" id="cfTanggal" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Shift</label>
+                        <select id="cfShift" class="form-control" required>
+                            <option value="Pagi/Siang">Pagi / Siang</option>
+                            <option value="Sore/Malam">Sore / Malam</option>
+                            <option value="Full Day">Full Day</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Jenis Arus Kas</label>
+                        <select id="cfJenis" class="form-control" required>
+                            <option value="Pemasukan">Pemasukan (+)</option>
+                            <option value="Pengeluaran">Pengeluaran (-)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Kategori Transaksi</label>
+                        <select id="cfKategori" class="form-control" required>
+                            <option value="Billing PS">Billing PS</option>
+                            <option value="Sewa Konsol">Sewa Konsol</option>
+                            <option value="F&B / Minuman">F&amp;B / Makanan &amp; Minuman</option>
+                            <option value="Modal / Saldo Awal">Modal / Saldo Awal</option>
+                            <option value="Operasional & Maintenance">Operasional &amp; Maintenance</option>
+                            <option value="Listrik & Internet">Listrik &amp; Internet</option>
+                            <option value="Gaji / Kasbon Karyawan">Gaji / Kasbon Karyawan</option>
+                            <option value="Lain-lain">Lain-lain</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Uraian / Keterangan Transaksi</label>
+                        <input type="text" id="cfUraian" class="form-control" placeholder="Keterangan transaksi" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nominal (Rp)</label>
+                        <input type="number" id="cfNominal" class="form-control" placeholder="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Metode Pembayaran</label>
+                        <select id="cfMetode" class="form-control" required>
+                            <option value="Tunai (Cash)">Tunai (Cash)</option>
+                            <option value="QRIS">QRIS</option>
+                            <option value="Transfer Bank">Transfer Bank</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Catatan Tambahan</label>
+                        <input type="text" id="cfCatatan" class="form-control" placeholder="Opsional">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="btnCancelCf" class="btn btn-outline hidden" onclick="resetCashflowForm()">Batal Edit</button>
+                    <button type="submit" id="btnSaveCf" class="btn btn-success">Simpan Transaksi Kas</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card-panel">
+            <div class="filter-bar">
+                <input type="date" id="filterCfDate" class="form-control" onchange="renderCashflowTable()" title="Filter Tanggal">
+                <select id="filterCfJenis" class="form-control" onchange="renderCashflowTable()">
+                    <option value="">Semua Arus Kas</option>
+                    <option value="Pemasukan">Pemasukan Saja</option>
+                    <option value="Pengeluaran">Pengeluaran Saja</option>
+                </select>
+                <input type="text" id="filterCfSearch" class="form-control" placeholder="Cari uraian / kategori..." oninput="renderCashflowTable()">
+                <button class="btn btn-outline btn-sm" onclick="document.getElementById('filterCfDate').value=''; document.getElementById('filterCfJenis').value=''; document.getElementById('filterCfSearch').value=''; renderCashflowTable();">Reset Filter</button>
+            </div>
+
+            <div id="cashflowExportArea" class="table-responsive">
+                <div class="export-header-banner">
+                    <img src="assets/logo.jpeg" alt="Logo">
+                    <div>
+                        <h3 style="margin:0; font-size:1.1rem;">REVIVAL PLAYSTATION — LAPORAN CASHFLOW HARIAN</h3>
+                        <small style="color:#cbd5e1;">Rekapitulasi Pemasukan, Pengeluaran &amp; Saldo Berjalan</small>
+                    </div>
+                </div>
+                <table id="cashflowTable">
+                    <thead>
+                        <tr>
+                            <th class="text-center">No</th>
+                            <th>Tanggal</th>
+                            <th>Shift</th>
+                            <th>Uraian Transaksi</th>
+                            <th>Kategori</th>
+                            <th>Metode</th>
+                            <th class="text-right">Pemasukan (+)</th>
+                            <th class="text-right">Pengeluaran (-)</th>
+                            <th class="text-right">Saldo Berjalan</th>
+                            <th>Status Input</th>
+                            <th class="no-export text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cashflowTableBody"></tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="6" class="text-right">TOTAL REKAPITULASI CASHFLOW:</td>
+                            <td class="text-right text-success" id="footerCfMasuk">Rp 0</td>
+                            <td class="text-right text-danger" id="footerCfKeluar">Rp 0</td>
+                            <td class="text-right" id="footerCfSaldo">Rp 0</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL PREVIEW FOTO IDENTITAS -->
+    <div id="photoModal" class="modal-backdrop hidden" onclick="if(event.target===this) closePhotoModal()">
+        <div class="modal-card">
+            <div class="modal-card-header">
+                <strong id="photoModalTitle">Foto Identitas Pelanggan</strong>
+                <button type="button" class="btn btn-outline btn-sm" onclick="closePhotoModal()">Tutup</button>
+            </div>
+            <div class="modal-card-body">
+                <img id="photoModalImg" src="" alt="Foto Identitas">
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2026 <strong>Revival PlayStation</strong> &bull; Sistem Informasi Manajemen Penyewaan &amp; Cashflow
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
